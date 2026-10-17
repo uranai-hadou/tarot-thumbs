@@ -24,6 +24,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main   # always the newest list, even when an earlier run is queued
 
       - name: Collect videos
         run: python3 scripts/fetch.py
@@ -32,11 +34,19 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/videos.json
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "データを更新"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          cp data/videos.json "$RUNNER_TEMP/videos.json"
+          # videos.json is fully rebuilt each run, so put ours on top of whatever main has now
+          for i in 1 2 3; do
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            cp "$RUNNER_TEMP/videos.json" data/videos.json
+            git add data/videos.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -q -m "データを更新"
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
