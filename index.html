@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="サムネ帳">
+<meta name="theme-color" content="#f2f1f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121118" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="noindex">
+<title>タロットサムネ帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: a sticky masthead + filter bar over an edge-to-edge thumbnail wall; the UI stays quiet so the thumbnails carry the color. */
+:root{
+  --bg:#f2f1f5; --surface:#ffffff; --fg:#18161f; --muted:#6c6878; --line:#dddae4;
+  --accent:#4b3f8f; --accent-fg:#ffffff; --chip:#e7e5ee;
+  --hot:#c2361f; --warm:#b7791f; --cool:#55526a; --badge-fg:#ffffff; --ok:#2f7d4f;
+  --shade:rgba(18,16,26,.72);
+  --display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --gutter:16px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121118; --surface:#1b1a23; --fg:#ecebf2; --muted:#9a96a8; --line:#2c2a37;
+  --accent:#a99cf0; --accent-fg:#14121c; --chip:#25232f;
+  --hot:#e5533a; --warm:#d59a35; --cool:#5d5a72; --ok:#5cbf85; --shade:rgba(0,0,0,.78); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#121118; --surface:#1b1a23; --fg:#ecebf2; --muted:#9a96a8; --line:#2c2a37;
+  --accent:#a99cf0; --accent-fg:#14121c; --chip:#25232f;
+  --hot:#e5533a; --warm:#d59a35; --cool:#5d5a72; --ok:#5cbf85; --shade:rgba(0,0,0,.78); color-scheme:dark }
+
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.5}
+img{max-width:100%}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.wrap{padding-inline:var(--gutter);max-width:1680px;margin-inline:auto}
+.mast{display:flex;align-items:center;gap:20px;padding-block:12px 8px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.04em;margin:0;display:flex;align-items:baseline;gap:8px}
+.brand small{font-family:var(--body);font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.08em}
+.tabs{display:flex;gap:4px}
+.tab{border:0;background:none;padding:6px 12px;border-radius:999px;cursor:pointer;color:var(--muted);font-weight:500}
+.tab[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+.tab .n{font-size:11px;margin-left:4px;opacity:.7;font-variant-numeric:tabular-nums}
+.updated{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+
+.bar{display:flex;gap:16px;align-items:center;padding-block:4px 10px;overflow-x:auto;scrollbar-width:none}
+.bar::-webkit-scrollbar{display:none}
+.grp{display:flex;gap:4px;align-items:center;flex:none}
+.grp-label{font-size:11px;color:var(--muted);letter-spacing:.08em;margin-right:4px;white-space:nowrap}
+.seg{border:1px solid var(--line);background:var(--surface);padding:5px 11px;border-radius:999px;cursor:pointer;white-space:nowrap;font-size:13px}
+.seg[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.chips{display:flex;gap:6px;padding-block:0 10px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:flex;align-items:center;gap:6px;border:1px solid transparent;background:var(--chip);padding:4px 11px 4px 6px;border-radius:999px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+.dot{border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:none}
+.chip .dot{width:16px;height:16px;font-size:9px}
+.chip[aria-pressed="false"]{background:transparent;border-color:var(--line);color:var(--muted)}
+.chip[aria-pressed="false"] .dot{opacity:.35}
+.chip.all{padding-left:11px;font-weight:500}
+
+main{padding-block:16px 48px}
+.note{font-size:12px;color:var(--muted);margin:0 0 12px}
+.grid{display:grid;gap:18px 14px;grid-template-columns:repeat(auto-fill,minmax(var(--card),1fr))}
+.d-l{--card:300px}.d-m{--card:220px}.d-s{--card:132px}
+.d-s{gap:6px}
+@media (max-width:560px){
+  .d-l{grid-template-columns:1fr}
+  .d-m{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 8px}
+  .d-s{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  .updated{display:none}
+}
+.card{min-width:0;display:flex;flex-direction:column;gap:7px;cursor:pointer}
+.thumb{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:8px;overflow:hidden;background:var(--chip)}
+.d-s .thumb{border-radius:4px}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s ease}
+.card:hover .thumb img{transform:scale(1.04)}
+.badge{position:absolute;top:6px;left:6px;background:var(--cool);color:var(--badge-fg);font-weight:700;font-size:12px;padding:2px 7px;border-radius:5px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.badge.hot{background:var(--hot)}.badge.warm{background:var(--warm)}
+.dur{position:absolute;right:6px;bottom:6px;background:var(--shade);color:#fff;font-size:11px;padding:1px 5px;border-radius:4px;font-variant-numeric:tabular-nums}
+.star{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;border:0;background:var(--shade);color:#fff;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s;font-size:15px;line-height:1}
+.card:hover .star,.star.on{opacity:1}
+.star.on{color:#ffd45c}
+@media (hover:none){.star{opacity:.85}}
+.d-s .badge{font-size:10px;padding:1px 5px;top:3px;left:3px}
+.d-s .dur,.d-s .meta,.d-s .star{display:none}
+.meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ttl{font-weight:500;font-size:13.5px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sub{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;min-width:0;font-variant-numeric:tabular-nums}
+.sub .cn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.sub .dot{width:8px;height:8px}
+.empty{padding:64px 0;text-align:center;color:var(--muted)}
+
+/* channels */
+.chan{max-width:760px;display:flex;flex-direction:column;gap:20px}
+.chan h2{font-family:var(--display);font-size:20px;margin:0 0 4px;text-wrap:balance}
+.chan p{color:var(--muted);margin:0;max-width:60ch}
+.add{display:flex;gap:8px;flex-wrap:wrap}
+.add input,.keybox input{flex:1 1 260px;min-width:0;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit}
+.btn{border:0;border-radius:8px;padding:10px 16px;background:var(--accent);color:var(--accent-fg);font-weight:700;cursor:pointer;white-space:nowrap}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:var(--chip);color:var(--fg)}
+.btn.small{padding:6px 10px;font-size:12px;font-weight:500}
+.btn.danger{background:var(--hot);color:#fff}
+.btn.link{text-decoration:none;display:inline-flex;align-items:center}
+.rows{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.row .dot{width:28px;height:28px;font-size:12px}
+.row .nm{min-width:0}
+.row .nm b{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .nm a{font-size:12px;color:var(--muted);text-decoration:none}
+.row .nm a:hover{text-decoration:underline}
+.row .num{font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .num b{display:block;color:var(--fg);font-size:14px;font-weight:500}
+.pending{font-size:11px;background:var(--chip);padding:2px 8px;border-radius:999px;color:var(--muted);white-space:nowrap;grid-column:span 2;justify-self:end}
+@media (max-width:560px){.row{grid-template-columns:28px minmax(0,1fr) auto auto}.row .num.med{display:none}.pending{grid-column:auto}}
+.keybox{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.keybox h3{margin:0;font-size:15px}
+.keybox ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px;color:var(--fg);max-width:62ch}
+.keybox code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all}
+.keybox .line{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ok{color:var(--ok);font-weight:700}
+.copyout{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:12px/1.4 ui-monospace,monospace}
+.hint{font-size:12px;color:var(--muted)}
+
+/* viewer */
+.viewer{position:fixed;inset:0;z-index:50;background:var(--shade);display:grid;place-items:center;padding:var(--gutter)}
+.sheet{background:var(--surface);border-radius:14px;max-width:760px;width:100%;max-height:100%;overflow:auto;display:flex;flex-direction:column}
+.sheet img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;border-radius:14px 14px 0 0}
+.sheet .in{padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px}
+.sheet h3{margin:0;font-size:16px;font-weight:700;line-height:1.5}
+.stats{display:flex;gap:18px;flex-wrap:wrap}
+.stat{display:flex;flex-direction:column}
+.stat span{font-size:11px;color:var(--muted);letter-spacing:.06em}
+.stat b{font-size:18px;font-variant-numeric:tabular-nums}
+.stat b.hot{color:var(--hot)}.stat b.warm{color:var(--warm)}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;z-index:60;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="mast">
+      <h1 class="brand">タロットサムネ帳 <small>競合リサーチ</small></h1>
+      <nav class="tabs" role="tablist">
+        <button class="tab" id="t-all" role="tab" aria-selected="true" data-tab="all">一覧</button>
+        <button class="tab" id="t-saved" role="tab" aria-selected="false" data-tab="saved">保存<span class="n" id="savedN">0</span></button>
+        <button class="tab" id="t-ch" role="tab" aria-selected="false" data-tab="ch">チャンネル<span class="n" id="chN"></span></button>
+      </nav>
+      <div class="updated" id="updated">読み込み中…</div>
+    </div>
+    <div id="filters">
+      <div class="bar">
+        <div class="grp"><span class="grp-label">期間</span>
+          <button class="seg" data-period="7">7日</button><button class="seg" data-period="30">30日</button><button class="seg" data-period="90">90日</button><button class="seg" data-period="0">すべて</button></div>
+        <div class="grp"><span class="grp-label">並び</span>
+          <button class="seg" data-sort="score">伸び率</button><button class="seg" data-sort="views">再生数</button><button class="seg" data-sort="new">新しい順</button></div>
+        <div class="grp"><span class="grp-label">表示</span>
+          <button class="seg" data-dens="l" aria-label="大きく表示">大</button><button class="seg" data-dens="m" aria-label="標準">中</button><button class="seg" data-dens="s" aria-label="小さく並べる">小</button></div>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="v-grid">
+    <p class="note" id="note"></p>
+    <div class="grid d-m" id="grid"></div>
+  </section>
+
+  <section id="v-ch" class="chan" hidden>
+    <div>
+      <h2>チャンネル</h2>
+      <p>ここにあるチャンネルの新しい動画を、毎朝6時ごろに自動で集めます。追加すると数分で一覧に並びます。</p>
+    </div>
+    <form class="add" id="addForm">
+      <input id="addUrl" type="text" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/@チャンネル名" aria-label="追加するチャンネルのURL">
+      <button class="btn" id="addBtn" type="submit">追加</button>
+    </form>
+    <div class="rows" id="rows"></div>
+
+    <div class="keybox" id="keySetup" hidden>
+      <h3>追加・削除の準備（この端末で1回だけ）</h3>
+      <p>チャンネルを追加・削除するには、GitHubの「鍵」をこの端末に入れておきます。このツール専用の鍵で、ほかのことには使えません。</p>
+      <ol>
+        <li>GitHubにログインした状態で <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">鍵の作成ページ</a> を開く</li>
+        <li><b>Token name</b> に <code>サムネ帳</code>、<b>Expiration</b> は <code>No expiration</code>（なければ一番長い期間）を選ぶ</li>
+        <li><b>Repository access</b> で <code>Only select repositories</code> を選び、<code>tarot-thumbs</code> を選ぶ</li>
+        <li><b>Permissions</b> の <b>Repository permissions</b> を開き、<b>Contents</b> を <code>Read and write</code> にする</li>
+        <li>一番下の <b>Generate token</b> を押し、出てきた <code>github_pat_</code> で始まる文字をコピーして下に貼る</li>
+      </ol>
+      <div class="line">
+        <input id="keyIn" type="password" autocomplete="off" placeholder="github_pat_…" aria-label="GitHubの鍵">
+        <button class="btn" id="keySave" type="button">保存</button>
+      </div>
+      <p class="hint">もう別の端末で設定済みなら、その端末の「ほかの端末に移す」で出るリンクを開くだけで設定できます。</p>
+    </div>
+
+    <div class="keybox" id="keyReady" hidden>
+      <div class="line"><span class="ok">✓ 追加・削除の準備はできています</span></div>
+      <div class="line">
+        <button class="btn ghost small" id="keyMove" type="button">ほかの端末に移す</button>
+        <button class="btn ghost small" id="keyDrop" type="button">この端末から鍵を外す</button>
+      </div>
+      <div id="moveBox" hidden>
+        <p class="hint">このリンクをスマホなど自分の端末だけで開いてください。リンクを知っている人はチャンネルを変更できるので、ほかの人には送らないでください。</p>
+        <input class="copyout" id="moveLink" readonly aria-label="引っ越し用リンク">
+        <div class="line" style="margin-top:8px"><button class="btn small" id="moveCopy" type="button">コピー</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="viewer" id="viewer" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const REPO="uranai-hadou/tarot-thumbs";
+const S={period:30,sort:"score",dens:"m",tab:"all",off:new Set()};
+let DATA={updated:null,channels:[],videos:[]},LIST=[],chs=[],byHandle={};
+let saved=new Set(),KEY="";
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+saved=new Set(store.get("saved",[]));KEY=store.get("ghkey","");
+{const p=store.get("prefs",{});if(p.dens)S.dens=p.dens;if(p.sort)S.sort=p.sort;if(p.period!=null)S.period=p.period}
+// key handed over from another device: #key=...
+if(location.hash.startsWith("#key=")){KEY=decodeURIComponent(location.hash.slice(5));store.set("ghkey",KEY);history.replaceState(null,"",location.pathname);setTimeout(()=>toast("鍵を設定しました"),300)}
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const man=n=>n>=1e8?(n/1e8).toFixed(1).replace(/\.0$/,"")+"億":n>=1e4?(n/1e4).toFixed(n>=1e5?0:1).replace(/\.0$/,"")+"万":(n||0).toLocaleString();
+const tier=s=>s>=5?"hot":s>=2?"warm":"";
+const fmtScore=s=>s>=100?"×100+":"×"+(s>=10?Math.round(s):s.toFixed(1));
+const color=i=>`hsl(${Math.round(i*137.5)%360} 52% 44%)`;
+const shortName=n=>{const s=n.split(/[　〜~｜|【】]/).map(x=>x.trim()).filter(Boolean)[0]||n;return s.length>12?s.slice(0,12)+"…":s};
+const ageDays=v=>v.published?(Date.now()-Date.parse(v.published))/864e5:null;
+function ago(v){const d=ageDays(v);if(d==null)return "-";if(d<1)return Math.max(1,Math.round(d*24))+"時間前";if(d<7)return Math.floor(d)+"日前";if(d<30)return Math.floor(d/7)+"週間前";if(d<365)return Math.floor(d/30)+"か月前";return Math.floor(d/365)+"年前"}
+function persist(){store.set("saved",[...saved]);store.set("prefs",{dens:S.dens,sort:S.sort,period:S.period})}
+function toast(t,ms=2800){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,ms)}
+const chUrl=h=>"https://www.youtube.com/"+(h.startsWith("@")?h:h);
+
+async function load(){
+  const t=Date.now();
+  const [d,l]=await Promise.all([
+    fetch("data/videos.json?t="+t).then(r=>r.ok?r.json():DATA),
+    fetch("data/channels.json?t="+t).then(r=>r.ok?r.json():[]).catch(()=>[])]);
+  DATA=d;
+  // the list on GitHub may be ahead of the data (just added / removed)
+  const pend=store.get("pending",{});
+  LIST=l.length?l:DATA.channels.map(c=>c.handle);
+  for(const [h,op] of Object.entries(pend)){
+    const has=DATA.channels.some(c=>c.handle===h&&c.median!=null);
+    if(op==="add"&&has||op==="del"&&!DATA.channels.some(c=>c.handle===h))delete pend[h];
+    else if(op==="add"&&!LIST.includes(h))LIST.push(h);
+    else if(op==="del")LIST=LIST.filter(x=>x!==h);
+  }
+  store.set("pending",pend);
+  build();
+}
+function build(){
+  const known=Object.fromEntries(DATA.channels.map(c=>[c.handle,c]));
+  chs=LIST.map((h,i)=>{const c=known[h]||{handle:h,name:h.replace(/^@/,""),subs:0,median:null};return {...c,color:color(i),short:shortName(c.name),ready:!!known[h]&&c.median!=null}});
+  byHandle=Object.fromEntries(chs.map((c,i)=>[c.handle,i]));
+  $("#chN").textContent=chs.length;
+  if(DATA.updated){const u=new Date(DATA.updated);$("#updated").innerHTML=`${u.getMonth()+1}/${u.getDate()} ${String(u.getHours()).padStart(2,"0")}:${String(u.getMinutes()).padStart(2,"0")} 更新<br>${chs.filter(c=>c.ready).length}チャンネル · ${DATA.videos.filter(v=>v.ch in byHandle).length}本`}
+  renderChips();render();
+}
+function renderChips(){
+  const box=$("#chips");box.innerHTML="";
+  const all=document.createElement("button");all.className="chip all";all.textContent="すべて";all.setAttribute("aria-pressed",S.off.size?"false":"true");
+  all.onclick=()=>{S.off.clear();renderChips();render()};box.append(all);
+  chs.forEach((c,i)=>{if(!c.ready)return;const b=document.createElement("button");b.className="chip";b.setAttribute("aria-pressed",S.off.has(i)?"false":"true");
+    b.innerHTML=`<span class="dot" style="background:${c.color}">${esc(c.short[0])}</span>${esc(c.short)}`;
+    b.onclick=()=>{ // first tap from "all" shows only that channel
+      if(!S.off.size)chs.forEach((_,j)=>j!==i&&S.off.add(j));else if(S.off.has(i))S.off.delete(i);else S.off.add(i);
+      if(chs.every((_,j)=>S.off.has(j)))S.off.clear();renderChips();render()};
+    box.append(b)});
+}
+function syncSegs(){
+  document.querySelectorAll("[data-period]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.period===S.period));
+  document.querySelectorAll("[data-sort]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.sort===S.sort));
+  document.querySelectorAll("[data-dens]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.dens===S.dens));
+}
+function list(){
+  let v=DATA.videos.filter(x=>x.ch in byHandle&&!S.off.has(byHandle[x.ch]));
+  if(S.tab==="saved")v=v.filter(x=>saved.has(x.id));
+  else if(S.period)v=v.filter(x=>{const d=ageDays(x);return d!=null&&d<=S.period});
+  const k={score:(a,b)=>b.score-a.score,views:(a,b)=>b.views-a.views,new:(a,b)=>(b.published||"").localeCompare(a.published||"")}[S.sort];
+  return v.sort(k);
+}
+const img=(id,big)=>`https://i.ytimg.com/vi/${id}/${big?"hqdefault":"mqdefault"}.jpg`;
+function card(x){
+  const c=chs[byHandle[x.ch]],t=tier(x.score);
+  const el=document.createElement("div");el.className="card";el.tabIndex=0;el.setAttribute("role","button");el.setAttribute("aria-label",x.title);
+  el.innerHTML=`<div class="thumb"><img alt="" loading="lazy" decoding="async" src="${img(x.id,S.dens==="l")}"><span class="badge ${t}" title="このチャンネルの普段の再生数の${x.score}倍">${fmtScore(x.score)}</span>${x.dur?`<span class="dur">${esc(x.dur)}</span>`:""}<button class="star ${saved.has(x.id)?"on":""}" aria-label="保存">${saved.has(x.id)?"★":"☆"}</button></div>
+  <div class="meta"><div class="ttl">${esc(x.title)}</div><div class="sub"><span class="dot" style="background:${c.color}"></span><span class="cn">${esc(c.short)}</span><span>·</span><span>${man(x.views)}回</span><span>·</span><span>${ago(x)}</span></div></div>`;
+  el.querySelector(".star").onclick=e=>{e.stopPropagation();toggleSave(x.id)};
+  el.onclick=()=>openViewer(x);
+  el.onkeydown=e=>{if(e.key==="Enter")openViewer(x)};
+  return el;
+}
+function toggleSave(id){saved.has(id)?saved.delete(id):saved.add(id);persist();render();toast(saved.has(id)?"保存しました":"保存を外しました")}
+function render(){
+  $("#savedN").textContent=saved.size;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===S.tab));
+  const isCh=S.tab==="ch";
+  $("#v-ch").hidden=!isCh;$("#v-grid").hidden=isCh;$("#filters").hidden=isCh;
+  if(isCh){renderChannels();return}
+  syncSegs();
+  const g=$("#grid");g.className="grid d-"+S.dens;g.innerHTML="";
+  const v=list();
+  const label=S.tab==="saved"?"保存したサムネ":(S.period?`直近${S.period}日`:"すべての期間");
+  $("#note").textContent=`${label} · ${v.length}本 · バッジの数字は、そのチャンネルの普段の再生数の何倍か`;
+  if(!v.length){g.innerHTML=`<div class="empty">${S.tab==="saved"?"サムネ右上の☆で、参考にしたいものを保存できます":DATA.updated?"この条件の動画はありません":"読み込み中…"}</div>`;return}
+  const f=document.createDocumentFragment();v.forEach(x=>f.append(card(x)));g.append(f);
+}
+function renderChannels(){
+  $("#keySetup").hidden=!!KEY;$("#keyReady").hidden=!KEY;
+  const r=$("#rows");r.innerHTML="";
+  const pend=store.get("pending",{});
+  chs.forEach(c=>{const d=document.createElement("div");d.className="row";
+    const status=pend[c.handle]==="add"||!c.ready?`<span class="pending">取得中（数分かかります）</span>`:`<div class="num med"><b>${man(c.median)}回</b>普段の再生数</div><div class="num"><b>${man(c.subs)}人</b>登録者</div>`;
+    d.innerHTML=`<span class="dot" style="background:${c.color}">${esc(c.short[0])}</span><div class="nm"><b>${esc(c.name)}</b><a href="${esc(chUrl(c.handle))}" target="_blank" rel="noopener">${esc(c.handle)}</a></div>${status}<button class="btn ghost small" type="button">外す</button>`;
+    const del=d.querySelector("button");
+    del.onclick=()=>{
+      if(!KEY){toast("先に下の「追加・削除の準備」をしてください");$("#keySetup").scrollIntoView({behavior:"smooth"});return}
+      if(!del.dataset.arm){del.dataset.arm=1;del.textContent="本当に外す";del.className="btn danger small";setTimeout(()=>{if(del.isConnected){delete del.dataset.arm;del.textContent="外す";del.className="btn ghost small"}},3500);return}
+      removeChannel(c.handle,del)};
+    r.append(d)});
+}
+
+/* GitHub: data/channels.json is the list the daily job reads */
+const b64e=s=>{const b=new TextEncoder().encode(s);let o="";b.forEach(x=>o+=String.fromCharCode(x));return btoa(o)};
+const b64d=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,"")),c=>c.charCodeAt(0)));
+async function gh(path,opts={}){
+  return fetch(`https://api.github.com/repos/${REPO}/${path}`,{...opts,cache:"no-store",headers:{Authorization:"Bearer "+KEY,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28",...(opts.body?{"Content-Type":"application/json"}:{})}});
+}
+async function editList(fn,message){
+  for(let i=0;i<2;i++){
+    const r=await gh("contents/data/channels.json?ref=main");
+    if(r.status===401||r.status===403||r.status===404)throw new Error("key");
+    if(!r.ok)throw new Error("net");
+    const j=await r.json();const cur=JSON.parse(b64d(j.content));const next=fn(cur);
+    if(next===null)return cur;
+    const p=await gh("contents/data/channels.json",{method:"PUT",body:JSON.stringify({message,content:b64e(JSON.stringify(next,null,1)+"\n"),sha:j.sha,branch:"main"})});
+    if(p.ok)return next;
+    if(p.status===401||p.status===403)throw new Error("key");
+    if(p.status!==409)throw new Error("net");
+  }
+  throw new Error("net");
+}
+function keyError(e){
+  if(e.message==="key"){toast("鍵が使えませんでした。tarot-thumbs を選んで Contents を Read and write にした鍵か確認してください",5000);$("#keySetup").hidden=false}
+  else toast("つながりませんでした。少し待ってからもう一度試してください",4000);
+}
+function parseChannel(u){
+  u=u.trim();
+  let m=u.match(/youtube\.com\/(@[^\/?#\s]+)/)||u.match(/^(@[^\/?#\s]+)$/);
+  if(m)return decodeURIComponent(m[1]);
+  m=u.match(/youtube\.com\/(channel\/UC[\w-]{22})/);
+  return m?m[1]:null;
+}
+let pollTimer=null;
+function poll(){clearInterval(pollTimer);let n=0;pollTimer=setInterval(async()=>{n++;await load().catch(()=>{});const pend=store.get("pending",{});if(!Object.keys(pend).length||n>=15){clearInterval(pollTimer);if(n<15)toast("一覧を更新しました")}},40000)}
+$("#addForm").onsubmit=async e=>{
+  e.preventDefault();
+  const h=parseChannel($("#addUrl").value);
+  if(!h){toast("「https://www.youtube.com/@〜」の形のURLを入れてください",4000);return}
+  if(LIST.includes(h)){toast("このチャンネルはもう入っています");return}
+  if(!KEY){toast("先に下の「追加・削除の準備」をしてください",4000);$("#keySetup").scrollIntoView({behavior:"smooth"});return}
+  const btn=$("#addBtn");btn.disabled=true;btn.textContent="追加中…";
+  try{
+    await editList(l=>l.includes(h)?null:[...l,h],`チャンネルを追加: ${h}`);
+    const pend=store.get("pending",{});pend[h]="add";store.set("pending",pend);
+    if(!LIST.includes(h))LIST.push(h);
+    $("#addUrl").value="";build();toast("追加しました。数分で一覧に並びます",4000);poll();
+  }catch(err){keyError(err)}
+  finally{btn.disabled=false;btn.textContent="追加"}
+};
+async function removeChannel(h,btn){
+  btn.disabled=true;btn.textContent="外しています…";
+  try{
+    await editList(l=>l.includes(h)?l.filter(x=>x!==h):null,`チャンネルを外す: ${h}`);
+    const pend=store.get("pending",{});pend[h]="del";store.set("pending",pend);
+    LIST=LIST.filter(x=>x!==h);S.off.clear();build();toast("外しました");poll();
+  }catch(err){keyError(err);btn.disabled=false;btn.textContent="外す"}
+}
+$("#keySave").onclick=async()=>{
+  const k=$("#keyIn").value.trim();if(!k){toast("鍵を貼ってください");return}
+  const old=KEY;KEY=k;const b=$("#keySave");b.disabled=true;b.textContent="確認中…";
+  try{
+    const r=await gh("contents/data/channels.json?ref=main");
+    if(!r.ok)throw new Error(r.status===401||r.status===403||r.status===404?"key":"net");
+    store.set("ghkey",KEY);$("#keyIn").value="";toast("鍵を保存しました。チャンネルを追加できます");renderChannels();
+  }catch(err){KEY=old;keyError(err)}
+  finally{b.disabled=false;b.textContent="保存"}
+};
+$("#keyMove").onclick=()=>{const box=$("#moveBox");box.hidden=!box.hidden;$("#moveLink").value=location.origin+location.pathname+"#key="+encodeURIComponent(KEY)};
+$("#moveCopy").onclick=()=>{const v=$("#moveLink").value;navigator.clipboard.writeText(v).then(()=>toast("コピーしました"),()=>{$("#moveLink").select();toast("選択しました。コピーしてください")})};
+$("#keyDrop").onclick=()=>{KEY="";store.del("ghkey");$("#moveBox").hidden=true;renderChannels();toast("この端末から鍵を外しました")};
+
+function openViewer(x){
+  const c=chs[byHandle[x.ch]],t=tier(x.score),v=$("#viewer");
+  v.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="動画の詳細"><img alt="" src="${img(x.id,true)}"><div class="in"><h3>${esc(x.title)}</h3>
+  <div class="sub"><span class="dot" style="background:${c.color}"></span><span class="cn">${esc(c.name)}</span></div>
+  <div class="stats"><div class="stat"><span>伸び率</span><b class="${t}">${fmtScore(x.score)}</b></div><div class="stat"><span>再生数</span><b>${man(x.views)}</b></div><div class="stat"><span>普段の再生数</span><b>${man(c.median)}</b></div><div class="stat"><span>投稿</span><b>${ago(x)}</b></div>${x.dur?`<div class="stat"><span>長さ</span><b>${esc(x.dur)}</b></div>`:""}</div>
+  <div class="acts"><a class="btn link" href="https://www.youtube.com/watch?v=${x.id}" target="_blank" rel="noopener">YouTubeで見る</a><button class="btn ghost" id="vSave" type="button">${saved.has(x.id)?"★ 保存済み":"☆ 保存"}</button><button class="btn ghost" id="vClose" type="button">閉じる</button></div></div></div>`;
+  v.hidden=false;
+  v.onclick=e=>{if(e.target===v)v.hidden=true};
+  $("#vClose").onclick=()=>v.hidden=true;$("#vClose").focus();
+  $("#vSave").onclick=()=>{toggleSave(x.id);$("#vSave").textContent=saved.has(x.id)?"★ 保存済み":"☆ 保存"};
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#viewer").hidden=true});
+document.querySelectorAll("[data-period]").forEach(b=>b.onclick=()=>{S.period=+b.dataset.period;persist();render()});
+document.querySelectorAll("[data-sort]").forEach(b=>b.onclick=()=>{S.sort=b.dataset.sort;persist();render()});
+document.querySelectorAll("[data-dens]").forEach(b=>b.onclick=()=>{S.dens=b.dataset.dens;persist();render()});
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;render();scrollTo(0,0)});
+render();
+load().then(()=>{if(Object.keys(store.get("pending",{})).length)poll()}).catch(()=>{$("#updated").textContent="読み込めませんでした";$("#grid").innerHTML='<div class="empty">データを読み込めませんでした。ページを再読み込みしてください</div>'});
+</script>
+</body>
+</html>
